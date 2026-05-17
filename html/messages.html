@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Messages</title>
+  <link rel="stylesheet" href="../css/messages.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <button class="menu-btn" aria-label="Open menu">☰</button>
+      <h1>MESSAGES</h1>
+    </header>
+
+    <main class="content">
+      <section class="message-section">
+        <h2 class="section-title priority">PRIORITY</h2>
+
+        <article class="message-card priority-card">
+          <div class="avatar">M <span class="status red"></span></div>
+
+          <div class="message-info">
+            <div class="message-top">
+              <h3>MRCHL</h3>
+              <span>12:45 PM</span>
+            </div>
+            <p>The surgical protocols for the next phase are ready for review.</p>
+          </div>
+
+          <div class="badge">3</div>
+        </article>
+      </section>
+
+      <section class="message-section">
+        <h2 class="section-title">RECENT</h2>
+
+        <article class="message-card">
+          <div class="avatar">S <span class="status red"></span></div>
+
+          <div class="message-info">
+            <div class="message-top">
+              <h3>SALMAN</h3>
+              <span>YESTERDAY</span>
+            </div>
+            <p>Did you see the latest update on the neural link API?</p>
+          </div>
+        </article>
+
+        <article class="message-card">
+          <div class="avatar">F <span class="status gray"></span></div>
+
+          <div class="message-info">
+            <div class="message-top">
+              <h3>FHITZ</h3>
+              <span>AUG 24</span>
+            </div>
+            <p>The assets for LinkSphere 2.0 have been uploaded to the server.</p>
+          </div>
+        </article>
+      </section>
+    </main>
+
+    <button class="fab" aria-label="Create new message">✎</button>
+
+    <nav class="bottom-nav">
+      <a href="#"><span>⌂</span>START</a>
+      <a href="#"><span>◉</span>SEARCH</a>
+      <a href="#"><span>♢</span>NOTIFICATION</a>
+      <a href="#" class="active"><span>▦</span>WORKSPACE</a>
+    </nav>
+  </div>
+
+  <script src="../js/messages.js"></script>
+</body>
+</html>

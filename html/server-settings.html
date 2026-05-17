@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Server Settings</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/server-settings.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="title-wrap">
+        <button class="icon-btn" aria-label="Go back" data-ripple>←</button>
+        <h1>Server Settings</h1>
+      </div>
+      <button class="save-btn" data-ripple>Save Changes</button>
+    </header>
+
+    <main class="content">
+      <section class="hero-card reveal">
+        <button class="avatar-wrap" aria-label="Update server icon">
+          <img src="assets/server-icon.png" alt="Server icon" class="avatar" />
+          <span class="avatar-overlay">✎</span>
+        </button>
+        <h2>Update Icon</h2>
+      </section>
+
+      <section class="name-card reveal">
+        <label for="serverName">Server Name</label>
+        <input id="serverName" value="HIGH CORTISOL" maxlength="24" />
+        <p>A private hub for alpha testing LinkSphere's distributed networking protocols.</p>
+      </section>
+
+      <section class="settings-section reveal">
+        <h2>Administration</h2>
+        <div class="menu-list">
+          <button class="menu-row" data-ripple><span class="row-left"><i data-lucide="shield-user"></i>Roles</span><span>›</span></button>
+          <button class="menu-row" data-ripple><span class="row-left"><i data-lucide="laugh"></i>Emoji</span><span>›</span></button>
+          <button class="menu-row" data-ripple><span class="row-left"><i data-lucide="message-square-text"></i>Stickers</span><span>›</span></button>
+          <button class="menu-row" data-ripple><span class="row-left"><i data-lucide="volume-2"></i>Soundboard</span><span>›</span></button>
+        </div>
+      </section>
+
+      <section class="settings-section reveal">
+        <h2>Moderation</h2>
+        <div class="menu-list">
+          <button class="menu-row" data-ripple><span class="row-left"><i data-lucide="shield"></i>Safety Setup</span><span>›</span></button>
+          <button class="menu-row active" data-ripple><span class="row-left"><i data-lucide="list"></i>Audit Log</span><span>›</span></button>
+          <button class="menu-row" data-ripple><span class="row-left"><i data-lucide="gavel"></i>Bans</span><i data-lucide="ban"></i></button>
+        </div>
+      </section>
+
+      <section class="danger-zone reveal">
+        <div>
+          <h2>Danger Zone</h2>
+          <p>Once you delete a server, there is no going back. Please be certain.</p>
+        </div>
+        <button class="delete-btn" data-ripple>Delete Server</button>
+      </section>
+    </main>
+
+    <nav class="bottom-nav">
+      <button><i data-lucide="layout-grid"></i><span>Overview</span></button>
+      <button class="selected"><i data-lucide="settings"></i><span>Settings</span></button>
+      <button><i data-lucide="users"></i><span>Members</span></button>
+      <button><i data-lucide="chart-no-axes-column"></i><span>Stats</span></button>
+    </nav>
+  </div>
+
+  <div class="toast" id="toast">Changes saved successfully</div>
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="../js/server-settings.js"></script>
+</body>
+</html>

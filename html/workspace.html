@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Workspace</title>
+  <link rel="stylesheet" href="../css/workspace.css" />
+</head>
+<body>
+  <main class="app">
+    <aside class="sidebar">
+      <div class="server-bar">
+        <div class="server-icon logo">✣</div>
+        <button class="add-btn">+</button>
+      </div>
+
+      <section class="channels">
+        <header>LOADING...</header>
+
+        <div class="channel-content">
+          <!-- JS fills this in entirely -->
+        </div>
+
+        <footer class="profile">
+          <div class="profile-left">
+            <div class="profile-img"></div>
+            <div>
+              <strong>WORKSPACE</strong>
+              <p>#workspace</p>
+            </div>
+          </div>
+          <button class="settings">⚙</button>
+        </footer>
+      </section>
+    </aside>
+
+    <!-- Chat Panel -->
+    <section class="chat-panel">
+      <header class="chat-header">
+        <button class="back-to-channels">←</button>
+        <span class="chat-channel-name"># general</span>
+      </header>
+
+      <div class="chat-messages" id="chat-messages">
+        <p class="no-messages">No messages yet. Say hello! 👋</p>
+      </div>
+
+      <footer class="chat-input-bar">
+        <input type="text" id="chat-input" placeholder="Message #general" />
+        <button id="send-btn">➤</button>
+      </footer>
+    </section>
+
+    <nav class="bottom-nav">
+      <button>
+        <span>⌂</span>
+        START
+      </button>
+      <button>
+        <span>◉</span>
+        SEARCH
+      </button>
+      <button>
+        <span>♢</span>
+        NOTIFICATION
+      </button>
+      <button class="active-nav">
+        <span>▦</span>
+        WORKSPACE
+      </button>
+    </nav>
+  </main>
+
+  <script src="../js/workspace.js"></script>
+</body>
+</html>
