@@ -1,0 +1,383 @@
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  --black: #000;
+  --white: #fff;
+  --light: #f3f3f3;
+  --gray: #5e5e5e;
+  --red: #bc0100;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #e9e9e9;
+  color: #111;
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+}
+
+.sidebar {
+  display: none;
+}
+
+.chat {
+  width: 100%;
+  min-height: 100vh;
+  background: var(--white);
+  animation: fadeIn 0.5s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  height: 64px;
+  border-bottom: 2px solid var(--black);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 clamp(14px, 3vw, 28px);
+  background: var(--white);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.topbar h1 {
+  font-size: clamp(18px, 2vw, 28px);
+  font-weight: 900;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+button {
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.icon-btn {
+  background: transparent;
+  font-size: 32px;
+  font-weight: 900;
+  line-height: 1;
+  transition: transform 0.25s ease;
+}
+
+.icon-btn:hover,
+.plus:hover,
+.send-btn:hover {
+  transform: scale(1.08);
+}
+
+.messages {
+  width: min(100%, 980px);
+  margin: 0 auto;
+  padding: clamp(24px, 4vw, 42px) clamp(16px, 4vw, 48px) 140px;
+  flex: 1;
+}
+
+.message {
+  display: flex;
+  align-items: flex-start;
+  gap: clamp(12px, 2vw, 20px);
+  margin-bottom: clamp(30px, 5vw, 50px);
+  opacity: 0;
+  transform: translateY(20px);
+  animation: slideUp 0.55s ease forwards;
+}
+
+.message:nth-child(1) { animation-delay: 0.1s; }
+.message:nth-child(2) { animation-delay: 0.25s; }
+.message:nth-child(3) { animation-delay: 0.4s; }
+.message:nth-child(4) { animation-delay: 0.55s; }
+
+.avatar {
+  width: clamp(41px, 5vw, 56px);
+  height: clamp(41px, 5vw, 56px);
+  background: var(--black);
+  color: var(--white);
+  border: 2px solid var(--black);
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  flex: 0 0 clamp(41px, 5vw, 56px);
+  font-size: clamp(16px, 2vw, 22px);
+}
+
+.avatar.red {
+  background: var(--red);
+}
+
+.content {
+  min-width: 0;
+  flex: 1;
+}
+
+.meta {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.meta span {
+  font-size: clamp(24px, 4vw, 34px);
+  text-transform: uppercase;
+}
+
+.mark .meta span {
+  color: var(--red);
+}
+
+.meta small {
+  font-size: clamp(13px, 2vw, 16px);
+  color: var(--gray);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+p {
+  margin: 0;
+  font-size: clamp(20px, 3vw, 28px);
+  color: #222;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.chat-img {
+  width: min(100%, 620px);
+  border: 4px solid var(--black);
+  display: block;
+  margin-top: 16px;
+  transition: transform 0.35s ease, box-shadow 0.35s ease;
+}
+
+.chat-img:hover {
+  transform: scale(1.015);
+  box-shadow: 8px 8px 0 var(--black);
+}
+
+.inputbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--white);
+  border-top: 2px solid var(--black);
+  padding: 14px clamp(14px, 4vw, 28px);
+  z-index: 20;
+}
+
+.input-wrap {
+  width: min(100%, 980px);
+  margin: 0 auto;
+  min-height: 62px;
+  background: var(--light);
+  border: 3px solid var(--black);
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.plus {
+  width: 42px;
+  height: 42px;
+  background: var(--black);
+  color: var(--white);
+  font-size: 34px;
+  line-height: 1;
+  flex: 0 0 42px;
+  transition: transform 0.25s ease;
+}
+
+.inputbar input {
+  min-width: 0;
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: clamp(14px, 2vw, 17px);
+  font-weight: 800;
+  outline: none;
+  text-transform: uppercase;
+}
+
+.icons {
+  display: flex;
+  gap: 10px;
+  font-size: clamp(22px, 3vw, 28px);
+  color: var(--gray);
+  flex-shrink: 0;
+}
+
+.send-btn {
+  display: none;
+  background: var(--black);
+  color: var(--white);
+  font-size: 13px;
+  font-weight: 900;
+  padding: 12px 16px;
+  flex-shrink: 0;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+}
+
+.inputbar.typing .send-btn {
+  display: block;
+  animation: popIn 0.2s ease forwards;
+}
+
+.inputbar.typing .icons {
+  display: none;
+}
+
+/* Tablet */
+@media (min-width: 700px) {
+  .chat {
+    border-left: 2px solid var(--black);
+    border-right: 2px solid var(--black);
+  }
+}
+
+/* Desktop web interface */
+@media (min-width: 1024px) {
+  .app-shell {
+    justify-content: stretch;
+  }
+
+  .sidebar {
+    width: 260px;
+    background: #111;
+    color: #fff;
+    border-right: 3px solid var(--black);
+    display: flex;
+    flex-direction: column;
+    padding: 24px 16px;
+    gap: 24px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+  }
+
+  .server-logo {
+    width: 56px;
+    height: 56px;
+    background: var(--red);
+    border: 2px solid #fff;
+    display: grid;
+    place-items: center;
+    font-size: 24px;
+    font-weight: 900;
+  }
+
+  nav {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .channel {
+    width: 100%;
+    background: transparent;
+    color: #d8d8d8;
+    text-align: left;
+    font-size: 18px;
+    font-weight: 800;
+    padding: 14px;
+    border: 2px solid transparent;
+    text-transform: uppercase;
+  }
+
+  .channel:hover,
+  .channel.active {
+    background: #fff;
+    color: #000;
+    border-color: #fff;
+  }
+
+  .chat {
+    width: calc(100% - 260px);
+    border: none;
+  }
+
+  .topbar {
+    height: 72px;
+  }
+
+  .menu {
+    display: none;
+  }
+
+  .inputbar {
+    left: 260px;
+  }
+}
+
+/* Small phones */
+@media (max-width: 390px) {
+  .topbar {
+    height: 58px;
+  }
+
+  .messages {
+    padding-bottom: 132px;
+  }
+
+  .input-wrap {
+    gap: 7px;
+    padding: 8px;
+  }
+
+  .plus {
+    width: 36px;
+    height: 36px;
+    flex-basis: 36px;
+    font-size: 28px;
+  }
+
+  .send-btn {
+    padding: 9px 10px;
+    font-size: 12px;
+  }
+
+  .icons {
+    gap: 7px;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
