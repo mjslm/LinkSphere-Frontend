@@ -41,13 +41,35 @@ function initializeSocket() {
   });
 
   // ── Listen for incoming calls ──────────────────────────────────────────────
-  socket.on('incoming_call', (data) => {
+  socket.on('incoming_call', async (data) => {
     const { caller, callerId, roomName } = data;
     currentCallRequest = { caller, callerId, roomName, isInitiator: false };
 
-    // Wrap caller string into an object so showDialingModal works correctly
+    // Fetch full caller profile to display in modal
+    let callerProfile = { name: caller, avatar_url: null, email: '' };
+    try {
+      const token = getToken();
+      const res = await fetch(`${API_BASE}/dm/conversations`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const conversations = await res.json();
+        const conversation = conversations.find(c => c.user_id === callerId);
+        if (conversation) {
+          callerProfile = {
+            name: conversation.name || caller,
+            avatar_url: conversation.avatar_url || null,
+            email: conversation.email || '',
+            status: 'Online',
+          };
+        }
+      }
+    } catch (err) {
+      console.error('Could not fetch caller profile:', err);
+    }
+
     playCallSound();
-    showDialingModal({ name: caller, avatar_url: null }, false);
+    showDialingModal(callerProfile, false);
   });
 
   // ── Listen for call rejection ──────────────────────────────────────────────
@@ -67,6 +89,14 @@ function initializeSocket() {
       const statusText = overlay.querySelector('#dialing-status-text');
       if (statusText) statusText.textContent = 'Call cancelled';
       setTimeout(() => overlay.remove(), 2000);
+    }
+  });
+
+  // ── Listen for peer ending the call ──────────────────────────────────────
+  socket.on('call_ended', () => {
+    const callScreen = document.getElementById('dm-call-screen');
+    if (callScreen) {
+      endInPageCall(callScreen);
     }
   });
 
@@ -839,8 +869,10 @@ function showDialingModal(user, isInitiator = false) {
         <button id="dialing-accept-btn" style="height:48px;padding:0 24px;border:2px solid var(--red);background:var(--red);color:var(--white);font-family:'DM Sans',Arial,sans-serif;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;">ACCEPT</button>
       </div>`;
 
+
+
   overlay.innerHTML = `
-    <div class="modal-box" style="width:360px;">
+    <div class="modal-box" style="width:380px;">
       <div class="modal-title">VOICE CALL</div>
       <div class="modal-body" style="text-align:center;padding:40px 24px;">
         <div style="width:80px;height:80px;background:var(--black);color:var(--white);font-family:'Black Han Sans',sans-serif;font-size:32px;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;border:2px solid var(--black);overflow:hidden;">
@@ -1176,6 +1208,12 @@ async function connectDmCall({ screen, livekitToken, serverUrl }) {
 
     livekitRoom.on(RoomEvent.Disconnected, () => {
       statusEl.textContent = 'ENDED';
+      
+      // Notify peer that call ended
+      if (socket && currentDmUser) {
+        socket.emit('call_ended', { userId: currentDmUser.user_id });
+      }
+      
       endInPageCall(screen);
     });
 

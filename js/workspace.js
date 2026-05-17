@@ -34,13 +34,36 @@ function initializeSocket() {
   });
 
   // ── Listen for incoming calls ──────────────────────────────────────────────
-  socket.on('incoming_call', (data) => {
+  socket.on('incoming_call', async (data) => {
     const { caller, callerId, roomName } = data;
     currentCallRequest = { caller, callerId, roomName, isInitiator: false };
     
+    // Fetch full caller profile to display in modal
+    let callerProfile = { name: caller, avatar_url: null, email: '' };
+    try {
+      const token = getToken();
+      const res = await fetch(`${API_BASE}/dm/conversations`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const conversations = await res.json();
+        const conversation = conversations.find(c => c.user_id === callerId);
+        if (conversation) {
+          callerProfile = {
+            name: conversation.name || caller,
+            avatar_url: conversation.avatar_url || null,
+            email: conversation.email || '',
+            status: 'Online',
+          };
+        }
+      }
+    } catch (err) {
+      console.error('Could not fetch caller profile:', err);
+    }
+
     // Show call modal with receiver UI (ACCEPT/DECLINE)
     playCallSound();
-    showDialingModalWorkspace(caller, false);
+    showDialingModal(callerProfile, false);
   });
 
   // ── Listen for call rejection ──────────────────────────────────────────────
@@ -60,6 +83,14 @@ function initializeSocket() {
       const statusText = overlay.querySelector('#dialing-status-text');
       if (statusText) statusText.textContent = 'Call cancelled';
       setTimeout(() => overlay.remove(), 2000);
+    }
+  });
+
+  // ── Listen for peer ending the call ──────────────────────────────────────
+  socket.on('call_ended', () => {
+    const callScreen = document.getElementById('dm-call-screen');
+    if (callScreen) {
+      endInPageCall(callScreen);
     }
   });
 }
@@ -347,6 +378,128 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+// ─── Dialing Modal ────────────────────────────────────────────────────────────
+
+function showDialingModal(user, isInitiator = false) {
+  const existing = document.getElementById('voice-call-overlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'voice-call-overlay';
+  overlay.className = 'modal-overlay';
+  overlay.style.display = 'flex';
+
+  let avatarHTML = '';
+  if (user.avatar_url) {
+    avatarHTML = `<img src="${user.avatar_url}" alt="${escapeHtml(user.name)}" style="width:100%;height:100%;object-fit:cover;">`;
+  } else {
+    avatarHTML = (user.name || '?').charAt(0).toUpperCase();
+  }
+
+  const buttonsHTML = isInitiator
+    ? `<button id="dialing-cancel-btn" style="height:48px;padding:0 24px;border:2px solid var(--black);background:var(--white);font-family:'DM Sans',Arial,sans-serif;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;transition:background 0.1s;">CANCEL CALL</button>`
+    : `<div style="display:flex;gap:12px;justify-content:center;">
+        <button id="dialing-decline-btn" style="height:48px;padding:0 24px;border:2px solid var(--black);background:var(--white);font-family:'DM Sans',Arial,sans-serif;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;">DECLINE</button>
+        <button id="dialing-accept-btn" style="height:48px;padding:0 24px;border:2px solid var(--red);background:var(--red);color:var(--white);font-family:'DM Sans',Arial,sans-serif;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;">ACCEPT</button>
+      </div>`;
+
+
+
+  overlay.innerHTML = `
+    <div class="modal-box" style="width:380px;">
+      <div class="modal-title">VOICE CALL</div>
+      <div class="modal-body" style="text-align:center;padding:40px 24px;">
+        <div style="width:80px;height:80px;background:var(--black);color:var(--white);font-family:'Black Han Sans',sans-serif;font-size:32px;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;border:2px solid var(--black);overflow:hidden;">
+          ${avatarHTML}
+        </div>
+        <div style="font-family:'Black Han Sans',sans-serif;font-size:16px;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:8px;">
+          ${escapeHtml(user.name || 'User')}
+        </div>
+        <div style="font-size:12px;color:var(--gray-600);letter-spacing:0.05em;text-transform:uppercase;margin-bottom:32px;" id="dialing-status-text">
+          ${isInitiator ? 'Requesting call...' : 'Incoming call...'}
+        </div>
+        <div style="display:flex;gap:12px;justify-content:center;">
+          ${buttonsHTML}
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const statusText = overlay.querySelector('#dialing-status-text');
+
+  function closeDialingModal() {
+    overlay.style.opacity = '0';
+    overlay.style.transition = 'opacity 0.15s ease';
+    setTimeout(() => overlay.remove(), 150);
+  }
+
+  if (isInitiator) {
+    const cancelBtn = overlay.querySelector('#dialing-cancel-btn');
+    cancelBtn.addEventListener('mouseover', () => cancelBtn.style.background = 'var(--gray-100)');
+    cancelBtn.addEventListener('mouseout',  () => cancelBtn.style.background = 'var(--white)');
+    cancelBtn.addEventListener('click', () => {
+      if (socket) {
+        socket.emit('call_cancelled_by_initiator', { receiverId: currentChannelId });
+      }
+      closeDialingModal();
+    });
+  } else {
+    const declineBtn = overlay.querySelector('#dialing-decline-btn');
+    const acceptBtn  = overlay.querySelector('#dialing-accept-btn');
+
+    declineBtn.addEventListener('mouseover', () => declineBtn.style.background = 'var(--gray-100)');
+    declineBtn.addEventListener('mouseout',  () => declineBtn.style.background = 'var(--white)');
+    acceptBtn.addEventListener('mouseover',  () => acceptBtn.style.background = 'var(--red-dark)');
+    acceptBtn.addEventListener('mouseout',   () => acceptBtn.style.background = 'var(--red)');
+
+    declineBtn.addEventListener('click', () => {
+      if (socket && currentCallRequest) {
+        socket.emit('call_declined', { callerId: currentCallRequest.callerId });
+      }
+      currentCallRequest = null;
+      closeDialingModal();
+    });
+
+    acceptBtn.addEventListener('click', async () => {
+      acceptBtn.disabled     = true;
+      const authToken = getToken();
+      const me = getUser();
+
+      try {
+        const res = await fetch(`${API_BASE}/calls/token`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            roomName: currentCallRequest.roomName,
+            participantName: me.name || me.user_id,
+          }),
+        });
+
+        if (!res.ok) {
+          console.error('Receiver failed to get LiveKit token');
+          acceptBtn.disabled = false;
+          return;
+        }
+
+        const { token: livekitToken, serverUrl } = await res.json();
+        currentCallRequest = null;
+        closeDialingModal();
+
+        // Join call
+        openLiveKitRoom(currentCallRequest?.roomName || 'call-room', livekitToken, serverUrl);
+      } catch (err) {
+        console.error('Error accepting call:', err);
+        acceptBtn.disabled = false;
+      }
+    });
+  }
 }
 
 // ─── File Helpers ─────────────────────────────────────────────────────────────
