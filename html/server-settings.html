@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Server Settings</title>
+  <title>Workspace Settings</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800;900&display=swap" rel="stylesheet">
@@ -14,7 +14,7 @@
     <header class="topbar">
       <div class="title-wrap">
         <button onclick="window.location.href='../html/workspace.html'" class="icon-btn" aria-label="Go back" data-ripple>←</button>
-        <h1 id="topbar-title">Server Settings</h1>
+        <h1 id="topbar-title">Workspace Settings</h1>
       </div>
       <button class="save-btn" id="saveBtn" data-ripple>Save Changes</button>
     </header>
@@ -22,16 +22,16 @@
     <!-- ── Settings view (default) ────────────────────────────────────────── -->
     <main class="content" id="settings-view">
       <section class="hero-card reveal">
-        <button class="avatar-wrap" aria-label="Update server icon">
-          <img src="assets/server-icon.png" alt="Server icon" class="avatar" />
+        <button class="avatar-wrap" aria-label="Update workspace icon">
+          <img src="assets/workspace-icon.png" alt="Workspace icon" class="avatar" />
           <span class="avatar-overlay">✎</span>
         </button>
         <h2>Update Icon</h2>
       </section>
 
       <section class="name-card reveal">
-        <label for="serverName">Server Name</label>
-        <input id="serverName" value="HIGH CORTISOL" maxlength="24" />
+        <label for="workspaceName">Workspace Name</label>
+        <input id="workspaceName" value="HIGH CORTISOL" maxlength="24" />
         <p>A private hub for alpha testing LinkSphere's distributed networking protocols.</p>
       </section>
 
@@ -80,9 +80,9 @@
       <section class="danger-zone reveal">
         <div>
           <h2>Danger Zone</h2>
-          <p>Once you delete a server, there is no going back. Please be certain.</p>
+          <p>Once you delete a workspace, there is no going back. Please be certain.</p>
         </div>
-        <button class="delete-btn" data-ripple>Delete Server</button>
+        <button class="delete-btn" data-ripple>Delete Workspace</button>
       </section>
     </main>
 

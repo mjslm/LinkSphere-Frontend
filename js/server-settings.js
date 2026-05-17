@@ -438,6 +438,302 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // ─── Delete Workspace ─────────────────────────────────────────────────────
+
+  function showDeleteConfirmation() {
+    const existing = document.getElementById('delete-confirm-overlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'delete-confirm-overlay';
+    overlay.style.cssText = `
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 10000;
+    `;
+
+    overlay.innerHTML = `
+      <style>
+        @keyframes slideUp {
+          from { transform: translateY(20px); opacity: 0 }
+          to   { transform: translateY(0);    opacity: 1 }
+        }
+        #delete-confirm-modal {
+          width: 360px; background: #fff;
+          border: 2px solid #111;
+          font-family: 'Inter', sans-serif;
+          animation: slideUp 0.2s ease;
+        }
+        #delete-confirm-header {
+          background: #cc1414; color: #fff;
+          font-size: 13px; font-weight: 900;
+          letter-spacing: 0.15em; padding: 16px 20px;
+          text-transform: uppercase;
+        }
+        #delete-confirm-body {
+          padding: 24px 20px;
+          font-size: 14px; color: #333; line-height: 1.6;
+        }
+        #delete-confirm-body p { margin: 0 0 16px 0; }
+        #delete-confirm-body strong { font-weight: 700; }
+        #delete-confirm-actions {
+          display: flex; border-top: 2px solid #111;
+        }
+        .delete-confirm-cancel {
+          flex: 1; height: 48px; border: none; border-right: 2px solid #111;
+          background: #f4f4f4; font-size: 12px; font-weight: 700;
+          letter-spacing: 0.12em; cursor: pointer; text-transform: uppercase;
+          font-family: 'Inter', sans-serif;
+          transition: background 0.15s;
+        }
+        .delete-confirm-cancel:hover { background: #e0e0e0; }
+        .delete-confirm-delete {
+          flex: 1; height: 48px; border: none;
+          background: #cc1414; color: #fff;
+          font-size: 12px; font-weight: 700;
+          letter-spacing: 0.12em; cursor: pointer; text-transform: uppercase;
+          font-family: 'Inter', sans-serif;
+          transition: background 0.15s;
+        }
+        .delete-confirm-delete:hover { background: #a00f0f; }
+        .delete-confirm-delete:disabled {
+          background: #999; cursor: not-allowed;
+        }
+      </style>
+      <div id="delete-confirm-modal">
+        <div id="delete-confirm-header">DELETE WORKSPACE</div>
+        <div id="delete-confirm-body">
+          <p>Are you sure you want to delete this workspace?</p>
+          <p><strong>This action cannot be undone.</strong> All channels, messages, and members will be permanently deleted.</p>
+        </div>
+        <div id="delete-confirm-actions">
+          <button class="delete-confirm-cancel">CANCEL</button>
+          <button class="delete-confirm-delete">DELETE WORKSPACE</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    const cancelBtn = overlay.querySelector('.delete-confirm-cancel');
+    const deleteConfirmBtn = overlay.querySelector('.delete-confirm-delete');
+
+    function close() {
+      overlay.style.opacity = '0';
+      overlay.style.transition = 'opacity 0.15s ease';
+      setTimeout(() => overlay.remove(), 150);
+    }
+
+    cancelBtn.addEventListener('click', close);
+    deleteConfirmBtn.addEventListener('click', () => {
+      deleteConfirmBtn.disabled = true;
+      deleteConfirmBtn.textContent = 'DELETING...';
+      deleteWorkspace(deleteConfirmBtn, close);
+    });
+
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) close();
+    });
+
+    // Auto-focus delete button
+    setTimeout(() => deleteConfirmBtn.focus(), 100);
+  }
+
+  async function deleteWorkspace(btn, closeModal) {
+    const token = getToken();
+    const wsId  = getWorkspaceId();
+
+    if (!token || !wsId) {
+      showToast('ERROR: Workspace not found');
+      btn.disabled = false;
+      btn.textContent = 'DELETE WORKSPACE';
+      return;
+    }
+
+    try {
+      // Step 1: Get all channels in the workspace
+      btn.textContent = 'LOADING CHANNELS...';
+      const channelsRes = await fetch(`${API_BASE}/channels?workspace_id=${wsId}`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      const channels = channelsRes.ok ? await channelsRes.json() : [];
+
+      // Step 2: Delete messages and related data (reactions, files)
+      btn.textContent = 'DELETING MESSAGES...';
+      for (const channel of channels) {
+        try {
+          const messagesRes = await fetch(`${API_BASE}/channels/${channel.channel_id}/messages`, {
+            headers: { 'Authorization': `Bearer ${token}` },
+          });
+          
+          if (messagesRes.ok) {
+            const messages = await messagesRes.json();
+            
+            for (const message of messages) {
+              try {
+                // Delete reactions (FK to message_id)
+                await fetch(`${API_BASE}/channels/${channel.channel_id}/messages/${message.message_id}/reactions`, {
+                  method:  'DELETE',
+                  headers: { 'Authorization': `Bearer ${token}` },
+                }).catch(() => {}); // Ignore if endpoint doesn't exist
+
+                // Delete files (FK to message_id)
+                await fetch(`${API_BASE}/channels/${channel.channel_id}/messages/${message.message_id}/files`, {
+                  method:  'DELETE',
+                  headers: { 'Authorization': `Bearer ${token}` },
+                }).catch(() => {}); // Ignore if endpoint doesn't exist
+
+                // Delete the message
+                await fetch(`${API_BASE}/channels/${channel.channel_id}/messages/${message.message_id}`, {
+                  method:  'DELETE',
+                  headers: { 'Authorization': `Bearer ${token}` },
+                }).catch(() => {});
+              } catch (err) {
+                console.error('Error deleting message:', err);
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Error processing channel messages:', err);
+        }
+      }
+
+      // Step 3: Delete calls and call participants
+      btn.textContent = 'DELETING CALLS...';
+      for (const channel of channels) {
+        try {
+          // Delete call participants
+          await fetch(`${API_BASE}/channels/${channel.channel_id}/calls/participants`, {
+            method:  'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` },
+          }).catch(() => {});
+
+          // Delete calls
+          await fetch(`${API_BASE}/channels/${channel.channel_id}/calls`, {
+            method:  'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` },
+          }).catch(() => {});
+        } catch (err) {
+          console.error('Error deleting calls:', err);
+        }
+      }
+
+      // Step 4: Delete channel members and audit logs
+      btn.textContent = 'CLEANING UP...';
+      for (const channel of channels) {
+        try {
+          // Delete channel members
+          await fetch(`${API_BASE}/channels/${channel.channel_id}/members`, {
+            method:  'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` },
+          }).catch(() => {});
+
+          // Delete audit logs for this channel
+          await fetch(`${API_BASE}/workspaces/${wsId}/audit?channel_id=${channel.channel_id}`, {
+            method:  'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` },
+          }).catch(() => {});
+        } catch (err) {
+          console.error('Error cleaning up:', err);
+        }
+      }
+
+      // Step 5: Delete all channels
+      btn.textContent = 'DELETING CHANNELS...';
+      for (const channel of channels) {
+        try {
+          await fetch(`${API_BASE}/channels/${channel.channel_id}`, {
+            method:  'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` },
+          }).catch(() => {});
+        } catch (err) {
+          console.error('Error deleting channel:', err);
+        }
+      }
+
+      // Step 6: Delete audit logs for workspace
+      btn.textContent = 'DELETING AUDIT LOGS...';
+      try {
+        await fetch(`${API_BASE}/workspaces/${wsId}/audit`, {
+          method:  'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` },
+        }).catch(() => {});
+      } catch (err) {
+        console.error('Error deleting audit logs:', err);
+      }
+
+      // Step 7: Delete workspace members
+      btn.textContent = 'REMOVING MEMBERS...';
+      try {
+        const membersRes = await fetch(`${API_BASE}/workspaces/${wsId}/members`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        
+        if (membersRes.ok) {
+          const members = await membersRes.json();
+          
+          for (const member of members) {
+            try {
+              await fetch(`${API_BASE}/workspaces/${wsId}/members/${member.user_id}`, {
+                method:  'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` },
+              }).catch(() => {});
+            } catch (err) {
+              console.error('Error removing member:', err);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error deleting members:', err);
+      }
+
+      // Step 8: Delete subscriptions
+      btn.textContent = 'DELETING SUBSCRIPTION...';
+      try {
+        await fetch(`${API_BASE}/workspaces/${wsId}/subscription`, {
+          method:  'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` },
+        }).catch(() => {});
+      } catch (err) {
+        console.error('Error deleting subscription:', err);
+      }
+
+      // Step 9: Finally, delete the workspace
+      btn.textContent = 'DELETING WORKSPACE...';
+      
+      const res = await fetch(`${API_BASE}/workspaces/${wsId}`, {
+        method:  'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        closeModal();
+        showToast('WORKSPACE DELETED');
+        
+        // Clear session storage
+        sessionStorage.removeItem('settings_ws_id');
+        
+        // Redirect to workspace list after a short delay
+        setTimeout(() => {
+          window.location.href = '../html/workspace.html';
+        }, 800);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        console.error('Delete workspace error:', data);
+        showToast(data.error || 'FAILED TO DELETE WORKSPACE');
+        btn.disabled = false;
+        btn.textContent = 'DELETE WORKSPACE';
+      }
+
+    } catch (err) {
+      console.error('Delete workspace error:', err);
+      showToast('COULD NOT REACH SERVER');
+      btn.disabled = false;
+      btn.textContent = 'DELETE WORKSPACE';
+    }
+  }
+
   // ─── Helpers ──────────────────────────────────────────────────────────────
 
   function escapeHtml(str) {
@@ -452,12 +748,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   saveBtn.addEventListener('click', () => showToast(`Saved: ${nameInput.value || 'Untitled server'}`));
 
-  deleteBtn.addEventListener('click', () => {
-    deleteBtn.animate([
-      { transform: 'translateX(0)' }, { transform: 'translateX(-8px)' },
-      { transform: 'translateX(8px)' }, { transform: 'translateX(0)' },
-    ], { duration: 280, easing: 'ease-in-out' });
-  });
+  deleteBtn.addEventListener('click', showDeleteConfirmation);
 
   copyBtn.addEventListener('click', copyCode);
   regenBtn.addEventListener('click', regenInviteCode);

@@ -1,10 +1,90 @@
 const API_BASE = 'https://linksphere-5bef.onrender.com/api';
+const SOCKET_URL = 'https://linksphere-5bef.onrender.com';
 
 let currentWorkspace   = null;
 let currentChannelId   = null;
 let currentChannelName = null;
 let messagePolling     = null;
 let attachedFiles      = [];
+let socket = null;
+let currentCallRequest = null;
+
+// ─── Initialize Socket.io ─────────────────────────────────────────────────────
+
+function initializeSocket() {
+  if (socket) return; // Already connected
+  
+  const token = getToken();
+  if (!token) return;
+  
+  socket = io(SOCKET_URL, {
+    auth: { token },
+    reconnection: true,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 5000,
+    reconnectionAttempts: 5
+  });
+
+  socket.on('connect', () => {
+    console.log('Socket connected:', socket.id);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Socket disconnected');
+  });
+
+  // ── Listen for incoming calls ──────────────────────────────────────────────
+  socket.on('incoming_call', (data) => {
+    const { caller, callerId, roomName } = data;
+    currentCallRequest = { caller, callerId, roomName, isInitiator: false };
+    
+    // Show call modal with receiver UI (ACCEPT/DECLINE)
+    playCallSound();
+    showDialingModalWorkspace(caller, false);
+  });
+
+  // ── Listen for call rejection ──────────────────────────────────────────────
+  socket.on('call_rejected', () => {
+    const overlay = document.getElementById('voice-call-overlay');
+    if (overlay) {
+      const statusText = overlay.querySelector('#dialing-status-text');
+      if (statusText) statusText.textContent = 'Call rejected';
+      setTimeout(() => overlay.remove(), 2000);
+    }
+  });
+
+  // ── Listen for call cancellation ──────────────────────────────────────────
+  socket.on('call_cancelled', () => {
+    const overlay = document.getElementById('voice-call-overlay');
+    if (overlay) {
+      const statusText = overlay.querySelector('#dialing-status-text');
+      if (statusText) statusText.textContent = 'Call cancelled';
+      setTimeout(() => overlay.remove(), 2000);
+    }
+  });
+}
+
+// ─── Play incoming call sound ─────────────────────────────────────────────────
+
+function playCallSound() {
+  try {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.value = 800;
+    oscillator.type = 'sine';
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.5);
+  } catch (err) {
+    console.error('Error playing call sound:', err);
+  }
+}
 
 // ─── Smooth navigate ──────────────────────────────────────────────────────────
 
@@ -257,7 +337,19 @@ function buildWorkspaceIcon(ws) {
   return icon;
 }
 
-// ─── File Upload Helpers ──────────────────────────────────────────────────────
+// ─── XSS Guard ───────────────────────────────────────────────────────────────
+
+function escapeHtml(str) {
+  if (typeof str !== 'string') return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+// ─── File Helpers ─────────────────────────────────────────────────────────────
 
 function formatSize(bytes) {
   if (bytes < 1024) return bytes + ' B';
@@ -266,14 +358,28 @@ function formatSize(bytes) {
 }
 
 function getFileIcon(file) {
-  const t = file.type;
-  if (t.startsWith('image/')) return '🖼️';
-  if (t.startsWith('video/')) return '🎬';
-  if (t.startsWith('audio/')) return '🎵';
-  if (t.includes('pdf'))      return '📄';
-  if (t.includes('zip') || t.includes('rar')) return '🗜️';
-  if (t.includes('word') || t.includes('document')) return '📝';
-  if (t.includes('sheet') || t.includes('excel') || t.includes('csv')) return '📊';
+  const t = file.type || '';
+  const n = file.name || '';
+  if (t.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i.test(n)) return '🖼️';
+  if (t.startsWith('video/') || /\.(mp4|mov|avi|mkv|webm)$/i.test(n))          return '🎬';
+  if (t.startsWith('audio/') || /\.(mp3|wav|ogg|flac|aac)$/i.test(n))          return '🎵';
+  if (t.includes('pdf')      || n.endsWith('.pdf'))                              return '📄';
+  if (t.includes('zip')      || /\.(zip|rar|7z)$/i.test(n))                     return '🗜️';
+  if (t.includes('word')     || /\.(doc|docx)$/i.test(n))                       return '📝';
+  if (t.includes('sheet')    || /\.(xls|xlsx|csv)$/i.test(n))                   return '📊';
+  return '📎';
+}
+
+function getFileCategoryIcon(type, name) {
+  if (type.includes('pdf'))                                                                                    return '📄';
+  if (type.includes('word') || type.includes('document') || name.endsWith('.docx') || name.endsWith('.doc')) return '📝';
+  if (type.includes('sheet') || type.includes('excel') || type.includes('csv') || name.endsWith('.xlsx') || name.endsWith('.csv')) return '📊';
+  if (type.includes('presentation') || name.endsWith('.pptx') || name.endsWith('.ppt'))                      return '📑';
+  if (type.includes('zip') || type.includes('rar') || type.includes('7z') || name.endsWith('.zip') || name.endsWith('.rar')) return '🗜️';
+  if (name.endsWith('.md') || name.endsWith('.txt') || type.includes('text/plain') || type.includes('markdown')) return '📋';
+  if (type.includes('json') || name.endsWith('.json'))                                                        return '🔧';
+  if (type.includes('javascript') || name.endsWith('.js') || name.endsWith('.ts'))                           return '⚙️';
+  if (name.endsWith('.html') || name.endsWith('.css'))                                                        return '🌐';
   return '📎';
 }
 
@@ -320,6 +426,83 @@ function renderAttachmentPreview() {
       attachedFiles.splice(parseInt(e.currentTarget.dataset.idx), 1);
       renderAttachmentPreview();
     });
+  });
+}
+
+// ─── Build file HTML from a file record ───────────────────────────────────────
+
+function buildFileHtml(f) {
+  const fname   = f.file_name || '';
+  const ext     = fname.split('.').pop().toLowerCase();
+  const rawType = f.file_type || '';
+  const url     = escapeHtml(f.file_url || '');
+  const name    = escapeHtml(fname || 'File');
+  const size    = (f.file_size || f.size) ? formatSize(f.file_size || f.size) : '';
+
+  const isImage = rawType.startsWith('image/') || ['jpg','jpeg','png','gif','webp','svg','bmp'].includes(ext);
+  const isVideo = rawType.startsWith('video/') || ['mp4','mov','avi','mkv','webm'].includes(ext);
+  const isAudio = rawType.startsWith('audio/') || ['mp3','wav','ogg','flac','aac','m4a'].includes(ext);
+
+  if (isImage) {
+    return `<img class="message-img" src="${url}" alt="${name}" />`;
+  }
+  if (isVideo) {
+    return `
+      <div class="message-video-wrap">
+        <video class="message-video" controls preload="metadata">
+          <source src="${url}" type="${escapeHtml(rawType)}" />
+        </video>
+        <div class="message-video-meta">
+          <span class="message-file-icon">🎬</span>
+          <span class="message-file-name">${name}</span>
+          ${size ? `<span class="message-file-size">${size}</span>` : ''}
+        </div>
+      </div>`;
+  }
+  if (isAudio) {
+    return `
+      <div class="message-audio-wrap">
+        <div class="message-audio-header">
+          <span class="message-file-icon">🎵</span>
+          <div>
+            <div class="message-file-name">${name}</div>
+            ${size ? `<div class="message-file-size">${size}</div>` : ''}
+          </div>
+        </div>
+        <audio class="message-audio" controls preload="metadata">
+          <source src="${url}" type="${escapeHtml(rawType)}" />
+        </audio>
+      </div>`;
+  }
+  return `
+    <a class="message-download-card" href="${url}" download="${name}" target="_blank" rel="noopener noreferrer">
+      <span class="message-download-icon">${getFileCategoryIcon(rawType, fname)}</span>
+      <div class="message-download-info">
+        <div class="message-file-name">${name}</div>
+        ${size ? `<div class="message-file-size">${size}</div>` : ''}
+      </div>
+      <span class="message-download-arrow">⬇</span>
+    </a>`;
+}
+
+// ─── Lightbox ─────────────────────────────────────────────────────────────────
+
+function openLightbox(imageUrl) {
+  const overlay = document.getElementById('lightbox-overlay');
+  const img = document.getElementById('lightbox-image');
+  if (!overlay || !img) return;
+  img.src = imageUrl;
+  overlay.style.display = 'flex';
+}
+
+function closeLightbox() {
+  const overlay = document.getElementById('lightbox-overlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+function setupLightboxListeners() {
+  document.querySelectorAll('.message-img').forEach(img => {
+    img.addEventListener('click', () => openLightbox(img.src));
   });
 }
 
@@ -388,7 +571,7 @@ function renderWorkspaces(workspaces) {
     const el = serverBar.querySelector(`.server-icon.workspace[data-id="${workspaceId}"]`);
     if (!el) return;
     if (iconUrl) {
-      el.textContent  = '';
+      el.textContent    = '';
       el.style.padding  = '0';
       el.style.overflow = 'hidden';
       const img = document.createElement('img');
@@ -454,50 +637,67 @@ async function loadWorkspace(workspace) {
 
 function renderChannels(channels) {
   const content = document.getElementById('channel-content');
-
-  const header = document.createElement('h4');
-  header.innerHTML = `TEXT CHANNELS <button id="add-channel-btn" title="Add Channel">+</button>`;
   content.innerHTML = '';
-  content.appendChild(header);
 
-  document.getElementById('add-channel-btn').addEventListener('click', () => {
-    showModal({
-      title:       'CREATE CHANNEL',
-      label:       'CHANNEL NAME',
-      placeholder: 'e.g. announcements',
-      confirmText: 'CREATE',
-      onConfirm:   (name) => createChannel(name),
-    });
-  });
+  if (!Array.isArray(channels)) channels = [];
 
-  if (!channels.length) {
+  const textChannels  = channels.filter(ch => !ch.type || ch.type === 'text');
+  const voiceChannels = channels.filter(ch => ch.type === 'voice');
+
+  const textHeader = document.createElement('h4');
+  textHeader.innerHTML = 'TEXT CHANNELS';
+  content.appendChild(textHeader);
+
+  if (textChannels.length === 0) {
     const empty = document.createElement('p');
     empty.className   = 'status-msg';
-    empty.textContent = 'No channels yet. Create one!';
+    empty.textContent = 'No text channels available.';
     content.appendChild(empty);
-    return;
+  } else {
+    textChannels.forEach(ch => {
+      const btn = document.createElement('button');
+      btn.className    = 'channel';
+      btn.dataset.id   = ch.channel_id;
+      btn.dataset.name = ch.name;
+      btn.innerHTML    = `<span>#</span> ${escapeHtml(ch.name)}`;
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.channel').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        openChannel(ch.channel_id, ch.name);
+      });
+      content.appendChild(btn);
+    });
   }
 
-  channels.forEach(ch => {
-    const btn = document.createElement('button');
-    btn.className    = 'channel';
-    btn.dataset.id   = ch.channel_id;
-    btn.dataset.name = ch.name;
-    btn.innerHTML    = `<span>#</span> ${escapeHtml(ch.name)}`;
+  if (voiceChannels.length > 0) {
+    const voiceHeader = document.createElement('h4');
+    voiceHeader.style.marginTop = '16px';
+    voiceHeader.innerHTML = 'VOICE CHANNELS';
+    content.appendChild(voiceHeader);
 
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.channel').forEach(c => c.classList.remove('active'));
-      btn.classList.add('active');
-      openChannel(ch.channel_id, ch.name);
+    voiceChannels.forEach(ch => {
+      const btn = document.createElement('button');
+      btn.className    = 'channel voice-channel';
+      btn.dataset.id   = ch.channel_id;
+      btn.dataset.name = ch.name;
+      btn.innerHTML    = `<span>🔊</span> ${escapeHtml(ch.name)}`;
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.channel').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        openChannel(ch.channel_id, ch.name);
+      });
+      content.appendChild(btn);
     });
+  }
 
-    content.appendChild(btn);
-  });
+  const generalChannel = content.querySelector('[data-name="General"]');
+  if (generalChannel) {
+    generalChannel.click();
+  } else {
+    const firstTextChannel = content.querySelector('.channel:not(.voice-channel)');
+    if (firstTextChannel) firstTextChannel.click();
+  }
 
-  const first = content.querySelector('.channel');
-  if (first) first.click();
-  
-  // Attach the sidebar add button listener
   attachChannelButtonListener();
 }
 
@@ -515,6 +715,7 @@ async function createChannel(name, type = 'text') {
     });
     const data = await res.json();
     if (!res.ok) { showErrorModal(data.error || 'Failed to create channel'); return; }
+    await new Promise(resolve => setTimeout(resolve, 500));
     loadWorkspace(currentWorkspace);
   } catch (err) {
     console.error('Error creating channel:', err);
@@ -534,14 +735,13 @@ function openChannel(channelId, channelName) {
   document.getElementById('chat-input').placeholder        = `Message #${channelName}`;
   document.getElementById('chat-messages').innerHTML       = '<div class="spinner"></div>';
 
-  // Clear any leftover attachments from the previous channel
   attachedFiles = [];
   renderAttachmentPreview();
 
   openChatPanel();
 
   loadMessages(channelId);
-  messagePolling = setInterval(() => loadMessages(channelId), 8000);
+messagePolling = setInterval(() => loadMessages(channelId), 15000);
 }
 
 // ─── Load Messages ────────────────────────────────────────────────────────────
@@ -578,18 +778,44 @@ function renderMessages(messages) {
   container.innerHTML = messages.map(msg => {
     const isMe = msg.user?.user_id === user?.user_id;
     const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    let fileHtml = '';
+
+    // ── Workspace format: files[] array ──────────────────────────────────────
+    if (msg.files && msg.files.length > 0) {
+      fileHtml = msg.files.map(f => buildFileHtml(f)).join('');
+    }
+    // ── DM fallback: flat file_url on the message ─────────────────────────
+    else if (msg.file_url) {
+      fileHtml = buildFileHtml({
+        file_name: msg.file_name,
+        file_url:  msg.file_url,
+        file_type: msg.file_type,
+        file_size: msg.file_size,
+        size:      msg.file_size,
+      });
+    }
+
+    const bubbleHtml = msg.content && msg.content.trim() && msg.content.trim() !== ' '
+      ? `<div class="message-bubble">${escapeHtml(msg.content)}</div>`
+      : '';
+
     return `
       <div class="message ${isMe ? 'mine' : ''}">
         <div class="message-meta">
           <strong>${isMe ? 'You' : escapeHtml(msg.user?.name || 'Unknown')}</strong>
           <span class="message-time">${time}</span>
         </div>
-        <div class="message-bubble">${escapeHtml(msg.content)}</div>
+        ${bubbleHtml}
+        ${fileHtml}
       </div>
     `;
   }).join('');
 
   if (isAtBottom) container.scrollTop = container.scrollHeight;
+
+  // ── Setup lightbox for images ─────────────────────────────────────────────
+  setupLightboxListeners();
 }
 
 // ─── Send Message ─────────────────────────────────────────────────────────────
@@ -606,75 +832,52 @@ async function sendMessage() {
   attachedFiles = [];
   renderAttachmentPreview();
 
-  // ── Send text message ─────────────────────────────────────────────────────
-  if (content) {
-    try {
-      const res = await fetch(`${API_BASE}/channels/${currentChannelId}/messages`, {
-        method:  'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type':  'application/json',
-        },
-        body: JSON.stringify({ content, channel_id: currentChannelId }),
-      });
-      const data = await res.json();
-      if (!res.ok) { console.error('Failed to send message:', data); }
-    } catch (err) {
-      console.error('Error sending message:', err);
+  // ── Send text message first to get message_id ─────────────────────────────
+  let messageId = null;
+  try {
+    const res = await fetch(`${API_BASE}/channels/${currentChannelId}/messages`, {
+      method:  'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type':  'application/json',
+      },
+      body: JSON.stringify({ content: content || ' ', channel_id: currentChannelId }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      console.error('Failed to send message:', data);
+    } else {
+      messageId = data.message_id || data.id || data.channel_message_id;
+    }
+  } catch (err) {
+    console.error('Error sending message:', err);
+  }
+
+  // ── Upload files ──────────────────────────────────────────────────────────
+  if (files.length && messageId) {
+    for (const file of files) {
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('message_id', messageId);
+
+        const res = await fetch(`${API_BASE}/files/upload`, {
+          method:  'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+          body:    formData,
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          console.error('File upload failed:', err);
+        }
+      } catch (err) {
+        console.error('Error uploading file:', err);
+      }
     }
   }
 
-  // ── Render file attachments locally ───────────────────────────────────────
-  // When your backend supports file uploads, replace this block with a
-  // FormData + fetch call to your upload endpoint, then call loadMessages().
-  if (files.length) {
-    const container = document.getElementById('chat-messages');
-    const time      = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-    const msgEl = document.createElement('div');
-    msgEl.className = 'message mine';
-
-    let filesHtml = '';
-    files.forEach(file => {
-      if (file.type.startsWith('image/')) {
-        const url = URL.createObjectURL(file);
-        filesHtml += `<img class="message-img" src="${url}" alt="${escapeHtml(file.name)}" />`;
-      } else {
-        filesHtml += `
-          <div class="message-file">
-            <span class="message-file-icon">${getFileIcon(file)}</span>
-            <div>
-              <div class="message-file-name">${escapeHtml(file.name)}</div>
-              <div class="message-file-size">${formatSize(file.size)}</div>
-            </div>
-          </div>`;
-      }
-    });
-
-    msgEl.innerHTML = `
-      <div class="message-meta">
-        <strong>You</strong>
-        <span class="message-time">${time}</span>
-      </div>
-      ${filesHtml}`;
-
-    container.appendChild(msgEl);
-    container.scrollTop = container.scrollHeight;
-  }
-
   loadMessages(currentChannelId);
-}
-
-// ─── XSS Guard ───────────────────────────────────────────────────────────────
-
-function escapeHtml(str) {
-  if (typeof str !== 'string') return '';
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
 }
 
 // ─── Event Listeners ──────────────────────────────────────────────────────────
@@ -724,16 +927,13 @@ document.querySelector('.add-btn').addEventListener('click', () => {
   });
 });
 
-// ─── Add Channel Button ────────────────────────────────────────────────────────
+// ─── Add Channel Button ───────────────────────────────────────────────────────
 
 function attachChannelButtonListener() {
   const sidebarAddBtn = document.querySelector('.sidebar-add-btn');
   if (!sidebarAddBtn) return;
-  
-  // Clear old listener by cloning and replacing
   const newBtn = sidebarAddBtn.cloneNode(true);
   sidebarAddBtn.parentNode.replaceChild(newBtn, sidebarAddBtn);
-  
   newBtn.addEventListener('click', showChannelTypeModal);
 }
 
@@ -806,10 +1006,6 @@ function showChannelTypeModal() {
           <span class="channel-type-icon">#</span>
           <span>Text Channel</span>
         </button>
-        <button class="channel-type-btn" data-type="voice">
-          <span class="channel-type-icon">🔊</span>
-          <span>Voice Channel</span>
-        </button>
       </div>
     </div>
   `;
@@ -817,16 +1013,12 @@ function showChannelTypeModal() {
   document.body.appendChild(overlay);
 
   const close = () => overlay.remove();
-
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) close();
-  });
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
 
   document.querySelectorAll('.channel-type-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const type = btn.dataset.type;
       close();
-      
       showModal({
         title:       `CREATE ${type.toUpperCase()} CHANNEL`,
         label:       'CHANNEL NAME',
@@ -842,7 +1034,6 @@ function showChannelTypeModal() {
   });
 }
 
-// Attach listener on load
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', attachChannelButtonListener);
 } else {
@@ -863,10 +1054,36 @@ async function createWorkspace(name) {
     });
     const data = await res.json();
     if (!res.ok) { showErrorModal(data.error || 'Failed to create workspace'); return; }
+
+    const newWorkspaceId = data.workspace_id || data.id;
+    if (newWorkspaceId) {
+      await createDefaultChannels(newWorkspaceId, token);
+    }
+
     loadWorkspaces();
   } catch (err) {
     console.error('Error creating workspace:', err);
     showErrorModal('Could not create workspace. Check your connection.');
+  }
+}
+
+// ─── Create Default Channels ──────────────────────────────────────────────────
+
+async function createDefaultChannels(workspaceId, token) {
+  try {
+    await fetch(`${API_BASE}/channels`, {
+      method:  'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ name: 'General', type: 'text', workspace_id: workspaceId }),
+    });
+    await fetch(`${API_BASE}/channels`, {
+      method:  'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ name: 'Lobby', type: 'voice', workspace_id: workspaceId }),
+    });
+    await new Promise(resolve => setTimeout(resolve, 500));
+  } catch (err) {
+    console.error('Error creating default channels:', err);
   }
 }
 
@@ -909,7 +1126,7 @@ async function loadWorkspacesAndOpen(targetId) {
 
   try {
     const controller = new AbortController();
-    const timeout    = setTimeout(() => controller.abort(), 15000);
+    const timeout = setTimeout(() => controller.abort(), 30000);
 
     const res = await fetch(`${API_BASE}/workspaces`, {
       headers: { 'Authorization': `Bearer ${token}` },
@@ -972,3 +1189,25 @@ async function init() {
 }
 
 init();
+initializeSocket(); // Initialize Socket.io for incoming calls
+
+// ─── Lightbox event listeners ─────────────────────────────────────────────────
+
+const lightboxClose = document.getElementById('lightbox-close');
+const lightboxOverlay = document.getElementById('lightbox-overlay');
+
+if (lightboxClose) {
+  lightboxClose.addEventListener('click', closeLightbox);
+}
+
+if (lightboxOverlay) {
+  lightboxOverlay.addEventListener('click', (e) => {
+    if (e.target === lightboxOverlay) closeLightbox();
+  });
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && lightboxOverlay && lightboxOverlay.style.display === 'flex') {
+    closeLightbox();
+  }
+});
