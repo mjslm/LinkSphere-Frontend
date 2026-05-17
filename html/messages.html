@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Messages</title>
+  <link rel="stylesheet" href="../css/messages.css" />
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ── RAIL (workspace icons, leftmost strip) ── -->
+  <aside class="server-bar">
+    <div class="server-icon logo active" id="rail-home" title="Messages">✣</div>
+    <!-- JS injects workspace icons here -->
+    <button class="add-btn rail-add-ws" title="Create or Join Workspace">+</button>
+  </aside>
+
+  <!-- ── SIDEBAR (conversation list) ── -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-title">Messages</span>
+      <button class="sidebar-add-btn" id="new-dm-btn" title="New Message">+</button>
+    </div>
+
+    <div class="sidebar-search">
+      <input type="text" id="sidebar-search-input" placeholder="Search conversations..." />
+    </div>
+
+    <div class="sidebar-conversations" id="conversation-list">
+      <div class="spinner"></div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="self-avatar" id="self-avatar-el">Y</div>
+      <div class="self-info">
+        <div class="self-name" id="self-name-el">YOU</div>
+        <div class="self-status">● Online</div>
+      </div>
+      <button class="menu-btn settings-icon-btn" title="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" width="16" height="16">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+        </svg>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ── CHAT PANEL ── -->
+  <main class="chat-panel" id="dm-panel">
+
+    <!-- Empty / welcome state -->
+    <div class="chat-empty" id="chat-empty">
+      <div class="chat-empty-icon">✉</div>
+      <div class="chat-empty-title">NO CHAT OPEN</div>
+      <div class="chat-empty-sub">Select a conversation or tap + to start one</div>
+    </div>
+
+    <!-- Active chat -->
+    <div class="chat-inner" id="chat-inner">
+
+      <div class="chat-header">
+        <button class="dm-back" id="dm-back" title="Back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" width="18" height="18"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <div class="chat-header-avatar" id="dm-panel-avatar">?</div>
+        <div class="chat-header-info">
+          <div class="chat-header-name" id="dm-panel-name">—</div>
+          <div class="chat-header-status">● Direct Message</div>
+        </div>
+        <div class="chat-header-actions">
+          <button class="icon-btn" title="Search in chat">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" width="16" height="16"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </button>
+          <button class="icon-btn" title="Profile">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" width="16" height="16"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="dm-messages" id="dm-messages"></div>
+
+      <div class="dm-input-bar">
+        <div class="dm-input-wrap">
+          <textarea id="dm-input" rows="1" placeholder="Message..."></textarea>
+        </div>
+        <button class="dm-send-btn" id="dm-send-btn" title="Send">
+          <svg viewBox="0 0 24 24" fill="white" width="18" height="18"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+        </button>
+      </div>
+
+    </div>
+  </main>
+
+</div>
+
+<!-- ── New DM Modal ── -->
+<div class="modal-overlay" id="new-dm-modal" style="display:none;">
+  <div class="modal-box">
+    <div class="modal-title">NEW MESSAGE</div>
+    <div class="modal-body">
+      <label class="modal-label" for="user-search-input">SEARCH USER</label>
+      <input class="modal-input" id="user-search-input" type="text" placeholder="Name or email..." autocomplete="off" />
+      <div class="search-results" id="user-search-results"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-cancel" id="dm-modal-cancel">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/messages.js"></script>
+</body>
+</html>
