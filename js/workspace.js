@@ -1,6 +1,7 @@
 const API_BASE = 'https://linksphere-5bef.onrender.com/api';
 const SOCKET_URL = 'https://linksphere-5bef.onrender.com';
 
+<<<<<<< HEAD
 let currentWorkspace     = null;
 let currentChannelId     = null;
 let currentChannelName   = null;
@@ -36,6 +37,15 @@ function getChannelType(channel) {
   
   return 'text';
 }
+=======
+let currentWorkspace   = null;
+let currentChannelId   = null;
+let currentChannelName = null;
+let messagePolling     = null;
+let attachedFiles      = [];
+let socket = null;
+let currentCallRequest = null;
+>>>>>>> 7da6e424cd08ecab23fd0d9a28a13e16c5e18070
 
 // ─── Initialize Socket.io ─────────────────────────────────────────────────────
 
@@ -55,11 +65,14 @@ function initializeSocket() {
 
   socket.on('connect', () => {
     console.log('Socket connected:', socket.id);
+<<<<<<< HEAD
     // Auto-register user for WebRTC signaling
     const user = getUser();
     if (user && user.user_id) {
       socket.emit('register', { userId: user.user_id });
     }
+=======
+>>>>>>> 7da6e424cd08ecab23fd0d9a28a13e16c5e18070
   });
 
   socket.on('disconnect', () => {
@@ -126,6 +139,7 @@ function initializeSocket() {
       endInPageCall(callScreen);
     }
   });
+<<<<<<< HEAD
 
   // ── Listen for voice channel member joined ───────────────────────────────
   socket.on('voice_member_joined', (data) => {
@@ -305,6 +319,8 @@ function initializeSocket() {
       console.error('Error creating offer', err);
     }
   });
+=======
+>>>>>>> 7da6e424cd08ecab23fd0d9a28a13e16c5e18070
 }
 
 // ─── Play incoming call sound ─────────────────────────────────────────────────
@@ -1017,8 +1033,13 @@ function renderChannels(channels) {
 
   if (!Array.isArray(channels)) channels = [];
 
+<<<<<<< HEAD
   const textChannels  = channels.filter(ch => getChannelType(ch) === 'text');
   const voiceChannels = channels.filter(ch => getChannelType(ch) === 'voice');
+=======
+  const textChannels  = channels.filter(ch => !ch.type || ch.type === 'text');
+  const voiceChannels = channels.filter(ch => ch.type === 'voice');
+>>>>>>> 7da6e424cd08ecab23fd0d9a28a13e16c5e18070
 
   const textHeader = document.createElement('h4');
   textHeader.innerHTML = 'TEXT CHANNELS';
@@ -1039,7 +1060,11 @@ function renderChannels(channels) {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.channel').forEach(c => c.classList.remove('active'));
         btn.classList.add('active');
+<<<<<<< HEAD
         openChannel(ch.channel_id, ch.name, getChannelType(ch));
+=======
+        openChannel(ch.channel_id, ch.name);
+>>>>>>> 7da6e424cd08ecab23fd0d9a28a13e16c5e18070
       });
       content.appendChild(btn);
     });
@@ -1060,7 +1085,11 @@ function renderChannels(channels) {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.channel').forEach(c => c.classList.remove('active'));
         btn.classList.add('active');
+<<<<<<< HEAD
         openChannel(ch.channel_id, ch.name, getChannelType(ch));
+=======
+        openChannel(ch.channel_id, ch.name);
+>>>>>>> 7da6e424cd08ecab23fd0d9a28a13e16c5e18070
       });
       content.appendChild(btn);
     });
@@ -1101,13 +1130,18 @@ async function createChannel(name, type = 'text') {
 
 // ─── Open Channel ─────────────────────────────────────────────────────────────
 
+<<<<<<< HEAD
 function openChannel(channelId, channelName, channelType = 'text') {
+=======
+function openChannel(channelId, channelName) {
+>>>>>>> 7da6e424cd08ecab23fd0d9a28a13e16c5e18070
   if (messagePolling) { clearInterval(messagePolling); messagePolling = null; }
 
   currentChannelType = channelType;
   currentChannelId   = channelId;
   currentChannelName = channelName;
 
+<<<<<<< HEAD
   document.querySelector('.chat-channel-name').textContent = channelType === 'voice'
     ? `🔊 ${channelName}`
     : `# ${channelName}`;
@@ -1116,6 +1150,16 @@ function openChannel(channelId, channelName, channelType = 'text') {
   
   attachedFiles = [];
   renderAttachmentPreview();
+=======
+  document.querySelector('.chat-channel-name').textContent = `# ${channelName}`;
+  document.getElementById('chat-input').placeholder        = `Message #${channelName}`;
+  document.getElementById('chat-messages').innerHTML       = '<div class="spinner"></div>';
+
+  attachedFiles = [];
+  renderAttachmentPreview();
+
+  openChatPanel();
+>>>>>>> 7da6e424cd08ecab23fd0d9a28a13e16c5e18070
 
   openChatPanel();
 
@@ -1287,6 +1331,7 @@ function openVoiceChatPanel(channelId) {
   // Load messages and start polling for new ones
   messagesDiv.innerHTML = '<div class="spinner"></div>';
   loadMessages(channelId);
+<<<<<<< HEAD
   if (messagePolling) clearInterval(messagePolling);
   messagePolling = setInterval(() => loadMessages(channelId), 15000);
 }
@@ -1918,6 +1963,9 @@ function attachRemoteStreamToGrid(channelId, userId, stream) {
   video.style.objectFit = 'cover';
   
   container.insertBefore(video, container.firstChild);
+=======
+messagePolling = setInterval(() => loadMessages(channelId), 15000);
+>>>>>>> 7da6e424cd08ecab23fd0d9a28a13e16c5e18070
 }
 
 // ─── Load Messages ────────────────────────────────────────────────────────────
@@ -2231,7 +2279,11 @@ async function createWorkspace(name) {
     const data = await res.json();
     if (!res.ok) { showErrorModal(data.error || 'Failed to create workspace'); return; }
 
+<<<<<<< HEAD
     const newWorkspaceId = data.workspace_id || data.id || data.workspace?.id || data.workspace?.workspace_id;
+=======
+    const newWorkspaceId = data.workspace_id || data.id;
+>>>>>>> 7da6e424cd08ecab23fd0d9a28a13e16c5e18070
     if (newWorkspaceId) {
       await createDefaultChannels(newWorkspaceId, token);
     }
@@ -2246,6 +2298,7 @@ async function createWorkspace(name) {
 // ─── Create Default Channels ──────────────────────────────────────────────────
 
 async function createDefaultChannels(workspaceId, token) {
+<<<<<<< HEAD
   const channelRequests = [
     { name: DEFAULT_TEXT_CHANNEL, type: 'text' },
     { name: DEFAULT_VOICE_CHANNEL, type: 'voice' },
@@ -2259,11 +2312,25 @@ async function createDefaultChannels(workspaceId, token) {
 
   try {
     await Promise.allSettled(channelRequests);
+=======
+  try {
+    await fetch(`${API_BASE}/channels`, {
+      method:  'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ name: 'General', type: 'text', workspace_id: workspaceId }),
+    });
+    await fetch(`${API_BASE}/channels`, {
+      method:  'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ name: 'Lobby', type: 'voice', workspace_id: workspaceId }),
+    });
+>>>>>>> 7da6e424cd08ecab23fd0d9a28a13e16c5e18070
     await new Promise(resolve => setTimeout(resolve, 500));
   } catch (err) {
     console.error('Error creating default channels:', err);
   }
 }
+<<<<<<< HEAD
 
 async function ensureDefaultChannels(workspaceId, token, channels = []) {
   if (!Array.isArray(channels)) channels = [];
@@ -2300,6 +2367,8 @@ async function ensureDefaultChannels(workspaceId, token, channels = []) {
     return false;
   }
 }
+=======
+>>>>>>> 7da6e424cd08ecab23fd0d9a28a13e16c5e18070
 
 // ─── Join Workspace ───────────────────────────────────────────────────────────
 

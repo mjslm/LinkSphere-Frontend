@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 .voice-members-minimized {
   display: flex;
   align-items: center;
@@ -47,6 +48,8 @@
   font-size: 12px;
   margin-top: 1px;
 }
+=======
+>>>>>>> 7da6e424cd08ecab23fd0d9a28a13e16c5e18070
 @import url('https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=DM+Sans:wght@400;500;600&display=swap');
 
 /* ─── Reset & Base ─────────────────────────────────────────────────────────── */
@@ -455,6 +458,7 @@ body {
   gap: 8px;
 }
 
+<<<<<<< HEAD
 .voice-members-panel {
   display: none;
   border-bottom: var(--border);
@@ -569,6 +573,8 @@ body {
   font-size: 13px;
 }
 
+=======
+>>>>>>> 7da6e424cd08ecab23fd0d9a28a13e16c5e18070
 .icon-btn {
   width: 32px;
   height: 32px;
@@ -992,6 +998,7 @@ body {
 .message-download-icon { font-size:24px; flex-shrink:0; }
 .message-download-info { flex:1; min-width:0; }
 .message-download-arrow { font-size:16px; flex-shrink:0; color:var(--red); font-weight:900; }
+<<<<<<< HEAD
 .message.mine .message-download-arrow { color:#ff6b6b; }
 
 /* ─── Voice Channel View ───────────────────────────────────────────────────── */
@@ -1691,3 +1698,6 @@ body {
 .voice-channel-container .chat-input-bar {
   border-top: 2px solid var(--black);
 }
+=======
+.message.mine .message-download-arrow { color:#ff6b6b; }
+>>>>>>> 7da6e424cd08ecab23fd0d9a28a13e16c5e18070
