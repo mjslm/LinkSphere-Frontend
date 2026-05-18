@@ -40,7 +40,7 @@ async function loadProfile() {
   if (!token) { window.location.href = 'login.html'; return; }
 
   try {
-    const res = await fetch(`${API_BASE}/users/profile`, { // ← fixed
+    const res = await fetch(`${API_BASE}/users/profile`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
 
@@ -159,10 +159,17 @@ document.getElementById('edit-cancel-btn').addEventListener('click', () => {
 
 document.getElementById('edit-save-btn').addEventListener('click', async () => {
   const name  = document.getElementById('edit-name').value.trim();
+  const email = document.getElementById('edit-email').value.trim();  // ← FIX: read email
   const token = getToken();
 
   if (!name) {
     editError.textContent   = 'Name is required.';
+    editError.style.display = 'block';
+    return;
+  }
+
+  if (!email) {
+    editError.textContent   = 'Email is required.';
     editError.style.display = 'block';
     return;
   }
@@ -174,7 +181,7 @@ document.getElementById('edit-save-btn').addEventListener('click', async () => {
         'Authorization': `Bearer ${token}`,
         'Content-Type':  'application/json',
       },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name, email }),  // ← FIX: include email in request
     });
 
     const data = await res.json();
@@ -185,7 +192,8 @@ document.getElementById('edit-save-btn').addEventListener('click', async () => {
       return;
     }
 
-    document.getElementById('profile-name').textContent = data.name;
+    document.getElementById('profile-name').textContent  = data.name;
+    document.getElementById('profile-email').textContent = data.email;  // ← FIX: update displayed email
     localStorage.setItem('user', JSON.stringify(data));
     renderAvatar(data);
     editModal.style.display = 'none';

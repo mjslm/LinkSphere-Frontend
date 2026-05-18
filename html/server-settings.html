@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Server Settings</title>
+  <title>Workspace Settings</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800;900&display=swap" rel="stylesheet">
@@ -13,24 +13,25 @@
   <div class="app-shell">
     <header class="topbar">
       <div class="title-wrap">
-        <button class="icon-btn" aria-label="Go back" data-ripple>←</button>
-        <h1>Server Settings</h1>
+        <button onclick="window.location.href='../html/workspace.html'" class="icon-btn" aria-label="Go back" data-ripple>←</button>
+        <h1 id="topbar-title">Workspace Settings</h1>
       </div>
-      <button class="save-btn" data-ripple>Save Changes</button>
+      <button class="save-btn" id="saveBtn" data-ripple>Save Changes</button>
     </header>
 
-    <main class="content">
+    <!-- ── Settings view (default) ────────────────────────────────────────── -->
+    <main class="content" id="settings-view">
       <section class="hero-card reveal">
-        <button class="avatar-wrap" aria-label="Update server icon">
-          <img src="assets/server-icon.png" alt="Server icon" class="avatar" />
+        <button class="avatar-wrap" aria-label="Update workspace icon">
+          <img src="assets/workspace-icon.png" alt="Workspace icon" class="avatar" />
           <span class="avatar-overlay">✎</span>
         </button>
         <h2>Update Icon</h2>
       </section>
 
       <section class="name-card reveal">
-        <label for="serverName">Server Name</label>
-        <input id="serverName" value="HIGH CORTISOL" maxlength="24" />
+        <label for="workspaceName">Workspace Name</label>
+        <input id="workspaceName" value="HIGH CORTISOL" maxlength="24" />
         <p>A private hub for alpha testing LinkSphere's distributed networking protocols.</p>
       </section>
 
@@ -53,20 +54,54 @@
         </div>
       </section>
 
+      <!-- ── Invite Code ─────────────────────────────────────────────────── -->
+      <section class="invite-section reveal">
+        <h2>Invite Code</h2>
+        <p class="invite-desc">Share this code so others can join your workspace instantly.</p>
+        <div class="invite-card">
+          <div class="invite-code-wrap">
+            <span class="invite-label">YOUR CODE</span>
+            <span class="invite-code" id="inviteCode">––––––––</span>
+          </div>
+          <div class="invite-actions">
+            <button class="invite-btn copy-btn" id="copyBtn" data-ripple title="Copy code">
+              <i data-lucide="copy"></i>
+              <span>Copy</span>
+            </button>
+            <button class="invite-btn regen-btn" id="regenBtn" data-ripple title="Generate new code">
+              <i data-lucide="refresh-cw"></i>
+              <span>New</span>
+            </button>
+          </div>
+        </div>
+        <p class="invite-hint" id="inviteHint">Loading invite code…</p>
+      </section>
+
       <section class="danger-zone reveal">
         <div>
           <h2>Danger Zone</h2>
-          <p>Once you delete a server, there is no going back. Please be certain.</p>
+          <p>Once you delete a workspace, there is no going back. Please be certain.</p>
         </div>
-        <button class="delete-btn" data-ripple>Delete Server</button>
+        <button class="delete-btn" data-ripple>Delete Workspace</button>
       </section>
     </main>
 
+    <!-- ── Members view ───────────────────────────────────────────────────── -->
+    <main class="content members-content" id="members-view" style="display:none;">
+      <div class="members-header reveal">
+        <h2 class="members-title">Members</h2>
+        <span class="members-count" id="membersCount">—</span>
+      </div>
+      <div id="members-list" class="members-list reveal">
+        <div class="spinner-wrap"><div class="members-spinner"></div></div>
+      </div>
+    </main>
+
     <nav class="bottom-nav">
-      <button><i data-lucide="layout-grid"></i><span>Overview</span></button>
-      <button class="selected"><i data-lucide="settings"></i><span>Settings</span></button>
-      <button><i data-lucide="users"></i><span>Members</span></button>
-      <button><i data-lucide="chart-no-axes-column"></i><span>Stats</span></button>
+      <button data-tab="overview"><i data-lucide="layout-grid"></i><span>Overview</span></button>
+      <button data-tab="settings" class="selected"><i data-lucide="settings"></i><span>Settings</span></button>
+      <button data-tab="members"><i data-lucide="users"></i><span>Members</span></button>
+      <button data-tab="stats"><i data-lucide="chart-no-axes-column"></i><span>Stats</span></button>
     </nav>
   </div>
 
